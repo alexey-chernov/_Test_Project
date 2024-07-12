@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FastAPI Blog</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .form-container {
+        margin-bottom: 20px;
+      }
+      .form-container input {
+        margin: 5px 0;
+        padding: 5px;
+        width: 300px;
+      }
+      .form-container button {
+        padding: 5px 10px;
+      }
+      .posts-container {
+        margin-top: 20px;
+      }
+      .post {
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-bottom: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>FastAPI Blog</h1>
+
+    <div class="form-container" id="signup-form">
+      <h2>Signup</h2>
+      <input type="email" id="signup-email" placeholder="Email" required />
+      <input
+        type="password"
+        id="signup-password"
+        placeholder="Password"
+        required
+      />
+      <button onclick="signup()">Signup</button>
+    </div>
+
+    <div class="form-container" id="login-form">
+      <h2>Login</h2>
+      <input type="email" id="login-email" placeholder="Email" required />
+      <input
+        type="password"
+        id="login-password"
+        placeholder="Password"
+        required
+      />
+      <button onclick="login()">Login</button>
+    </div>
+
+    <div class="form-container" id="add-post-form" style="display: none">
+      <h2>Add Post</h2>
+      <textarea
+        id="post-text"
+        placeholder="What's on your mind?"
+        required
+      ></textarea>
+      <button onclick="addPost()">Add Post</button>
+    </div>
+
+    <div class="posts-container" id="posts-container" style="display: none">
+      <h2>Your Posts</h2>
+    </div>
+
+    <script>
+      let token = null;
+
+      function signup() {
+        const email = document.getElementById("signup-email").value;
+        const password = document.getElementById("signup-password").value;
+
+        fetch("/signup", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, password }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            token = data.access_token;
+            document.getElementById("add-post-form").style.display = "block";
+            document.getElementById("posts-container").style.display = "block";
+            alert("Signup successful!");
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("Signup failed!");
+          });
+      }
+
+      function login() {
+        const email = document.getElementById("login-email").value;
+        const password = document.getElementById("login-password").value;
+
+        fetch("/token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            username: email,
+            password: password,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            token = data.access_token;
+            document.getElementById("add-post-form").style.display = "block";
+            document.getElementById("posts-container").style.display = "block";
+            fetchPosts();
+            alert("Login successful!");
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("Login failed!");
+          });
+      }
+
+      function addPost() {
+        const text = document.getElementById("post-text").value;
+
+        fetch("/addpost", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ text }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            alert("Post added!");
+            fetchPosts();
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("Failed to add post!");
+          });
+      }
+
+      function fetchPosts() {
+        fetch("/getposts", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            const postsContainer = document.getElementById("posts-container");
+            postsContainer.innerHTML = "<h2>Your Posts</h2>";
+            data.forEach((post) => {
+              const postElement = document.createElement("div");
+              postElement.className = "post";
+              postElement.innerHTML = `
+                        <p>${post.text}</p>
+                        <button onclick="deletePost(${post.id})">Delete</button>
+                    `;
+              postsContainer.appendChild(postElement);
+            });
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("Failed to fetch posts!");
+          });
+      }
+
+      function deletePost(postId) {
+        fetch(`/deletepost/${postId}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+          .then((response) => {
+            if (response.ok) {
+              alert("Post deleted!");
+              fetchPosts();
+            } else {
+              throw new Error("Failed to delete post");
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("Failed to delete post!");
+          });
+      }
+    </script>
+  </body>
+</html>
